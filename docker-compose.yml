@@ -1,0 +1,17 @@
+version: '3.9'
+
+services:
+  backend:
+    build: ./backend
+    container_name: shell-backend
+    environment:
+      DATABASE_URL: sqlite:////data/app.db
+      FRONTEND_ORIGIN: http://localhost:8081
+    ports:
+      - "8001:8000"
+    volumes:
+      - backend-data:/data
+    restart: unless-stopped
+
+volumes:
+  backend-data:

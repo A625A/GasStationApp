@@ -1,0 +1,101 @@
+name: Capture portfolio screenshots
+
+on:
+  push:
+    paths:
+      - ".github/workflows/capture-portfolio-screenshots.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install application and browser
+        run: |
+          npm ci
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Export Expo web app
+        run: |
+          npx expo export --platform web --output-dir dist
+
+      - name: Serve exported app
+        run: |
+          python3 -m http.server 8081 --directory dist > /tmp/gasstationapp.log 2>&1 &
+          echo $! > /tmp/gasstationapp.pid
+          python3 - <<'PY'
+          import time, urllib.request
+          for _ in range(60):
+              try:
+                  urllib.request.urlopen("http://127.0.0.1:8081/", timeout=1)
+                  break
+              except Exception:
+                  time.sleep(1)
+          else:
+              raise SystemExit("Expo web export did not start")
+          PY
+
+      - name: Capture real application screenshots
+        run: |
+          mkdir -p assets/screenshots
+          node <<'JS'
+          const { chromium } = require('playwright');
+
+          (async () => {
+            const browser = await chromium.launch();
+            const context = await browser.newContext({
+              viewport: { width: 430, height: 900 },
+              deviceScaleFactor: 1
+            });
+
+            const login = await context.newPage();
+            await login.goto('http://127.0.0.1:8081/', { waitUntil: 'networkidle' });
+            await login.screenshot({ path: 'assets/screenshots/fuel-rewards-login.png', fullPage: true });
+
+            const home = await context.newPage();
+            await home.addInitScript(() => {
+              const user = {
+                id: '1',
+                email: 'portfolio@example.com',
+                username: 'Andrew',
+                language: 'es',
+                points: 1250,
+                code: 'SHELL-DEMO',
+                token: null
+              };
+              localStorage.setItem('shell_users_v2', JSON.stringify([user]));
+              localStorage.setItem('shell_current_user_v2', '1');
+            });
+            await home.goto('http://127.0.0.1:8081/', { waitUntil: 'networkidle' });
+            await home.waitForTimeout(1500);
+            await home.screenshot({ path: 'assets/screenshots/fuel-rewards-home.png', fullPage: true });
+
+            await browser.close();
+          })();
+          JS
+
+      - name: Restore dependency manifests
+        run: git checkout -- package.json package-lock.json
+
+      - name: Commit screenshots
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/screenshots/fuel-rewards-login.png assets/screenshots/fuel-rewards-home.png
+          if git diff --cached --quiet; then
+            echo "Screenshots unchanged."
+          else
+            git commit -m "docs: add real Fuel Rewards screenshots"
+            git push
+          fi

@@ -20,13 +20,60 @@ jobs:
           node-version: "20"
           cache: npm
 
-      - name: Install application and browser
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install frontend, backend, and browser
         run: |
           npm ci
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Start FastAPI backend
+        run: |
+          mkdir -p backend/data
+          (
+            cd backend
+            uvicorn main:app --host 127.0.0.1 --port 8000 > /tmp/gasstation-backend.log 2>&1 &
+            echo $! > /tmp/gasstation-backend.pid
+          )
+          python3 - <<'PY'
+          import time, urllib.request
+          for _ in range(60):
+              try:
+                  urllib.request.urlopen("http://127.0.0.1:8000/health", timeout=1)
+                  break
+              except Exception:
+                  time.sleep(1)
+          else:
+              raise SystemExit("FastAPI backend did not start")
+          PY
+
+      - name: Create synthetic demo account through the real API
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request
+          payload = json.dumps({
+              "email": "portfolio@example.com",
+              "username": "Andrew",
+              "password": "Portfolio123!"
+          }).encode()
+          req = urllib.request.Request(
+              "http://127.0.0.1:8000/api/register",
+              data=payload,
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+          with urllib.request.urlopen(req) as response:
+              print(response.read().decode())
+          PY
 
       - name: Export Expo web app
+        env:
+          EXPO_PUBLIC_API_URL: http://127.0.0.1:8000
         run: |
           npx expo export --platform web --output-dir dist
 
@@ -46,7 +93,7 @@ jobs:
               raise SystemExit("Expo web export did not start")
           PY
 
-      - name: Capture real application screenshots
+      - name: Capture real end-to-end application screenshots
         run: |
           mkdir -p assets/screenshots
           node <<'JS'
@@ -58,28 +105,25 @@ jobs:
               viewport: { width: 430, height: 900 },
               deviceScaleFactor: 1
             });
+            const page = await context.newPage();
 
-            const login = await context.newPage();
-            await login.goto('http://127.0.0.1:8081/', { waitUntil: 'networkidle' });
-            await login.screenshot({ path: 'assets/screenshots/fuel-rewards-login.png', fullPage: true });
-
-            const home = await context.newPage();
-            await home.addInitScript(() => {
-              const user = {
-                id: '1',
-                email: 'portfolio@example.com',
-                username: 'Andrew',
-                language: 'es',
-                points: 1250,
-                code: 'SHELL-DEMO',
-                token: null
-              };
-              localStorage.setItem('shell_users_v2', JSON.stringify([user]));
-              localStorage.setItem('shell_current_user_v2', '1');
+            await page.goto('http://127.0.0.1:8081/', { waitUntil: 'networkidle' });
+            await page.screenshot({
+              path: 'assets/screenshots/fuel-rewards-login.png',
+              fullPage: true
             });
-            await home.goto('http://127.0.0.1:8081/', { waitUntil: 'networkidle' });
-            await home.waitForTimeout(1500);
-            await home.screenshot({ path: 'assets/screenshots/fuel-rewards-home.png', fullPage: true });
+
+            const inputs = page.locator('input');
+            await inputs.nth(0).fill('portfolio@example.com');
+            await inputs.nth(1).fill('Portfolio123!');
+            await page.getByText('Ingresar', { exact: true }).click();
+            await page.getByText('Bienvenido, Andrew', { exact: true }).waitFor({ timeout: 15000 });
+            await page.waitForTimeout(500);
+
+            await page.screenshot({
+              path: 'assets/screenshots/fuel-rewards-home.png',
+              fullPage: true
+            });
 
             await browser.close();
           })();
@@ -96,6 +140,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "Screenshots unchanged."
           else
-            git commit -m "docs: add real Fuel Rewards screenshots"
+            git commit -m "docs: refresh verified Fuel Rewards screenshots"
             git push
           fi

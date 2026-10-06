@@ -79,18 +79,26 @@ npm run web
 
 The client resolves its backend URL from `EXPO_PUBLIC_API_URL` when configured and otherwise uses development host defaults.
 
+## Running App
+
+These screenshots are generated from the current application build by the repository's screenshot workflow.
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <a href="assets/screenshots/fuel-rewards-home.png"><img src="assets/screenshots/fuel-rewards-home.png" width="300" alt="Fuel Rewards home and points dashboard"></a><br>
+      <strong>Home / points dashboard</strong>
+    </td>
+    <td width="50%" align="center">
+      <a href="assets/screenshots/fuel-rewards-login.png"><img src="assets/screenshots/fuel-rewards-login.png" width="300" alt="Fuel Rewards login screen"></a><br>
+      <strong>Authentication entry point</strong>
+    </td>
+  </tr>
+</table>
+
 ## Main Screens
 
-The source contains dedicated screens for:
-
-- Login
-- Registration
-- Home / points dashboard
-- Promotions
-- Coupon exchange
-- Account settings
-
-The public repository currently documents the implementation from source; product screenshots can be added separately from a real device run.
+The source contains dedicated screens for login, registration, home / points, promotions, coupon exchange, and account settings.
 
 ## Scope
 

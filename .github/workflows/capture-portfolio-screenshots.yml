@@ -74,8 +74,7 @@ jobs:
       - name: Export Expo web app
         env:
           EXPO_PUBLIC_API_URL: http://127.0.0.1:8000
-        run: |
-          npx expo export --platform web --output-dir dist
+        run: npx expo export --platform web --output-dir dist
 
       - name: Serve exported app
         run: |
@@ -93,13 +92,14 @@ jobs:
               raise SystemExit("Expo web export did not start")
           PY
 
-      - name: Capture real end-to-end application screenshots
+      - name: Capture every application screen
         run: |
           mkdir -p assets/screenshots
           node <<'JS'
           const { chromium } = require('playwright');
 
           (async () => {
+            const root = 'http://127.0.0.1:8081/';
             const browser = await chromium.launch();
             const context = await browser.newContext({
               viewport: { width: 430, height: 900 },
@@ -107,21 +107,65 @@ jobs:
             });
             const page = await context.newPage();
 
-            await page.goto('http://127.0.0.1:8081/', { waitUntil: 'networkidle' });
+            // Login
+            await page.goto(root, { waitUntil: 'networkidle' });
+            await page.getByText('Hola de nuevo', { exact: true }).waitFor();
             await page.screenshot({
               path: 'assets/screenshots/fuel-rewards-login.png',
               fullPage: true
             });
 
+            // Registration
+            await page.getByText('Crear cuenta', { exact: true }).click();
+            await page.getByText('Crea tu cuenta', { exact: true }).waitFor();
+            await page.screenshot({
+              path: 'assets/screenshots/fuel-rewards-register.png',
+              fullPage: true
+            });
+
+            // Return to a fresh login state and authenticate through the real FastAPI backend.
+            await page.goto(root, { waitUntil: 'networkidle' });
+            await page.getByText('Hola de nuevo', { exact: true }).waitFor();
             const inputs = page.locator('input');
             await inputs.nth(0).fill('portfolio@example.com');
             await inputs.nth(1).fill('Portfolio123!');
             await page.getByText('Ingresar', { exact: true }).click();
             await page.getByText('Bienvenido, Andrew', { exact: true }).waitFor({ timeout: 15000 });
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(400);
 
+            // Home
             await page.screenshot({
               path: 'assets/screenshots/fuel-rewards-home.png',
+              fullPage: true
+            });
+
+            // Promotions
+            await page.getByText('Ver promociones', { exact: true }).click();
+            await page.getByText('Tus puntos:', { exact: false }).waitFor();
+            await page.screenshot({
+              path: 'assets/screenshots/fuel-rewards-promotions.png',
+              fullPage: true
+            });
+
+            // Back to Home through the real bottom-tab navigation.
+            await page.getByText('Shell Rewards', { exact: true }).last().click();
+            await page.getByText('Bienvenido, Andrew', { exact: true }).waitFor();
+
+            // Coupon exchange
+            await page.getByText('Canjear cupones', { exact: true }).click();
+            await page.getByText('Canje de cupones', { exact: true }).first().waitFor();
+            await page.screenshot({
+              path: 'assets/screenshots/fuel-rewards-coupons.png',
+              fullPage: true
+            });
+
+            // Back to Home, then open Settings from the header gear.
+            await page.getByText('Shell Rewards', { exact: true }).last().click();
+            await page.getByText('Bienvenido, Andrew', { exact: true }).waitFor();
+            await page.mouse.click(412, 32);
+            await page.getByText('Configuración de cuenta', { exact: true }).waitFor({ timeout: 10000 });
+            await page.screenshot({
+              path: 'assets/screenshots/fuel-rewards-settings.png',
               fullPage: true
             });
 
@@ -136,10 +180,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/screenshots/fuel-rewards-login.png assets/screenshots/fuel-rewards-home.png
+          git add assets/screenshots/fuel-rewards-*.png
           if git diff --cached --quiet; then
             echo "Screenshots unchanged."
           else
-            git commit -m "docs: refresh verified Fuel Rewards screenshots"
+            git commit -m "docs: capture all Fuel Rewards screens"
             git push
           fi

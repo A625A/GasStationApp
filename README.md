@@ -52,7 +52,7 @@ flowchart LR
 | Navigation | React Navigation stack + bottom tabs |
 | Authentication | Backend login/register API boundary |
 | Local state | AsyncStorage |
-| Promotions | API-backed with local fallback data |
+| Promotions | Local mock-data service boundary |
 | Coupon flow | Points validation + generated redemption codes |
 | Notifications | Expo Notifications |
 | Profile media | Expo Image Picker |
@@ -81,24 +81,44 @@ The client resolves its backend URL from `EXPO_PUBLIC_API_URL` when configured a
 
 ## Running App
 
-These screenshots are generated from the current application build by the repository's screenshot workflow.
+These screenshots are generated from the current application build by the repository's screenshot workflow. The workflow launches the local FastAPI backend, creates a synthetic demo account through the real registration endpoint, exports the Expo web application, signs in through the UI, and captures the authenticated screens.
 
 <table>
   <tr>
-    <td width="50%" align="center">
-      <a href="assets/screenshots/fuel-rewards-home.png"><img src="assets/screenshots/fuel-rewards-home.png" width="300" alt="Fuel Rewards home and points dashboard"></a><br>
-      <strong>Home / points dashboard</strong>
+    <td width="33%" align="center">
+      <a href="assets/screenshots/fuel-rewards-login.png"><img src="assets/screenshots/fuel-rewards-login.png" width="240" alt="Fuel Rewards login screen"></a><br>
+      <strong>Login</strong>
     </td>
-    <td width="50%" align="center">
-      <a href="assets/screenshots/fuel-rewards-login.png"><img src="assets/screenshots/fuel-rewards-login.png" width="300" alt="Fuel Rewards login screen"></a><br>
-      <strong>Authentication entry point</strong>
+    <td width="33%" align="center">
+      <a href="assets/screenshots/fuel-rewards-register.png"><img src="assets/screenshots/fuel-rewards-register.png" width="240" alt="Fuel Rewards registration screen"></a><br>
+      <strong>Register</strong>
+    </td>
+    <td width="33%" align="center">
+      <a href="assets/screenshots/fuel-rewards-home.png"><img src="assets/screenshots/fuel-rewards-home.png" width="240" alt="Fuel Rewards points dashboard"></a><br>
+      <strong>Home / Points</strong>
+    </td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">
+      <a href="assets/screenshots/fuel-rewards-promotions.png"><img src="assets/screenshots/fuel-rewards-promotions.png" width="240" alt="Fuel Rewards promotions screen"></a><br>
+      <strong>Promotions</strong>
+    </td>
+    <td width="33%" align="center">
+      <a href="assets/screenshots/fuel-rewards-coupons.png"><img src="assets/screenshots/fuel-rewards-coupons.png" width="240" alt="Fuel Rewards coupon exchange screen"></a><br>
+      <strong>Coupon Exchange</strong>
+    </td>
+    <td width="33%" align="center">
+      <a href="assets/screenshots/fuel-rewards-settings.png"><img src="assets/screenshots/fuel-rewards-settings.png" width="240" alt="Fuel Rewards account settings screen"></a><br>
+      <strong>Settings</strong>
     </td>
   </tr>
 </table>
 
+The screenshots come from the running project, not design mockups. The account and promotion/coupon content shown are synthetic demo data. This project is not an official Shell application.
+
 ## Main Screens
 
-The source contains dedicated screens for login, registration, home / points, promotions, coupon exchange, and account settings.
+The implemented screen set is: Login · Registration · Home / Points · Promotions · Coupon Exchange · Account Settings.
 
 ## Scope
 
